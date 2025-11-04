@@ -1,6 +1,9 @@
 from gensim.models import Word2Vec
 from nltk.tokenize import word_tokenize
 import nltk, numpy as np
+import pandas as pd
+import spacy
+import numpy as np
 
 nltk.download('punkt')
 
@@ -36,3 +39,21 @@ class VectoriseurWord2Vec:
         v1 = self.vectoriser_phrase(p1)
         v2 = self.vectoriser_phrase(p2)
         return self.similarite_cosine(v1, v2)
+
+    def compute_label_vectors(self, input_csv, output_csv):
+        df = pd.read_csv(input_csv)
+        label_vectors = {}
+
+        for label, group in df.groupby("label"):
+            vectors = []
+            for text in group["cleaned_text"]:
+                v = self.vectoriser_phrase(str(text))
+                vectors.append(v)
+            mean_vec = np.mean(vectors, axis=0)
+            label_vectors[label] = mean_vec
+
+        output_df = pd.DataFrame.from_dict(label_vectors, orient="index")
+        output_df.reset_index(inplace=True)
+        output_df.rename(columns={"index": "label"}, inplace=True)
+        output_df.to_csv(output_csv, index=False)
+
