@@ -1,0 +1,46 @@
+# A-Framework backend
+
+## 
+
+⇒ c’est le coeur du backend  va créer mon API web, permet de recevoir des requettes de React(Post et GET), de traiter les textes, et de renvoyer des résultats JSON.
+
+# B- Prétraitement du texte
+
+## 1-NLTK
+
+⇒ Pour la tokenisation, la suppression des stopwords
+
+## 2-spacy
+
+⇒ pour la lemmatisation 
+
+## 3-unicode
+
+⇒ pour supprimer les accents étudiant → etudiant
+
+# B-Vectorisation
+
+## 1-scikit-learn
+
+⇒ c’est la methode classique de vectorisation,C’est **la base** pour la représentation textuelle classique.
+
+- `CountVectorizer` → Bag of Words
+- `TfidfVectorizer` → TF-IDF
+- `cosine_similarity` → mesure de similarité
+
+## 2-transformers
+
+⇒ pour la vectorisation avancée avec des embeddings, permet de produire des vecteurs sémantiques très puissants.
+
+# C-Recherches sémantiques
+
+# 1-faiss-cpu ou numpy si corpus petit
+
+⇒ pour faire des **recherches de similarité très rapides** sur un grand nombre de vecteurs (top-k voisins).
+
+# D-Backend
+
+# 1-numpy et pandas
+
+- numpy ⇒ pour les vecteurs, les operations numériques
+- pandas⇒ pour gérer le corpus
