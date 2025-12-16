@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 import spacy
 from collections import Counter
+import ast
 
 class Vecteur:
-    def _init_(self, modele="en_core_web_md"):
+    def __init__(self, modele="en_core_web_md"):
         self.nlp = spacy.load(modele)
         self.vecteurs_train = []
         self.labels_train = []
@@ -24,6 +25,26 @@ class Vecteur:
         v1 = self.vectoriser_phrase(p1)
         v2 = self.vectoriser_phrase(p2)
         return self.similarite_cosine(v1, v2)
+    
+    def precomputer_vecteurs(self, input_csv: str, output_csv: str):
+        df = pd.read_csv(input_csv)
+        if "text" not in df.columns or "label" not in df.columns:
+            raise ValueError(
+                "Le CSV doit contenir au moins les colonnes 'text' et 'label'."
+            )
+        
+        vecteurs = []
+        for texte in df["text"]:
+            vec = self.vectoriser_phrase(texte)
+            vecteurs.append(vec.tolist())
+        
+        df["vecteur"] = vecteurs
+        
+        vecteur_array = np.array(vecteurs)
+        for i in range(vecteur_array.shape[1]):
+            df[f"dim_{i}"] = vecteur_array[:, i]
+        
+        df.to_csv(output_csv, index=False)
     
     def compute_label_vectors(self, input_csv: str, output_csv: str):
         df = pd.read_csv(input_csv)
@@ -50,7 +71,7 @@ class Vecteur:
         output_df = output_df[cols]
         output_df.to_csv(output_csv, index=False)
     
-    def predire_label(self, texte: str, label_vectors_csv: str) -> str:
+    def predire_label_moyenne(self, texte: str, label_vectors_csv: str) -> str:
         df = pd.read_csv(label_vectors_csv)
         v = self.vectoriser_phrase(texte)
         
@@ -69,16 +90,16 @@ class Vecteur:
     
     def entrainer_knn(self, input_csv: str):
         df = pd.read_csv(input_csv)
-        if "text" not in df.columns or "label" not in df.columns:
+        if "vecteur" not in df.columns or "label" not in df.columns:
             raise ValueError(
-                "Le CSV doit contenir au moins les colonnes 'text' et 'label'."
+                "Le CSV doit contenir les colonnes 'vecteur' et 'label'."
             )
         
         self.vecteurs_train = []
         self.labels_train = []
         
         for _, row in df.iterrows():
-            vec = self.vectoriser_phrase(row["text"])
+            vec = np.array(ast.literal_eval(row["vecteur"]))
             self.vecteurs_train.append(vec)
             self.labels_train.append(row["label"])
     
@@ -100,37 +121,56 @@ class Vecteur:
         label_predit = votes.most_common(1)[0][0]
         
         return label_predit
-    
-    def predire_label_knn_detaille(self, texte: str, k=5):
-        if not self.vecteurs_train:
-            raise ValueError("Vous devez d'abord appeler entrainer_knn() !")
+
+    def trouver_texte_le_plus_proche(self, texte: str, vectors_csv: str) -> tuple:
+        df = pd.read_csv(vectors_csv)
         
-        v = self.vectoriser_phrase(texte)
+        if "vecteur" not in df.columns or "text" not in df.columns:
+            raise ValueError(
+                "Le CSV doit contenir les colonnes 'vecteur' et 'text'."
+            )
         
-        similarites = []
-        for i, vec_train in enumerate(self.vecteurs_train):
-            sim = self.similarite_cosine(v, vec_train)
-            similarites.append((sim, self.labels_train[i], i))
+        v_query = self.vectoriser_phrase(texte)
         
-        similarites.sort(reverse=True, key=lambda x: x[0])
-        top_k = similarites[:k]
+        similarite_max = -1
+        texte_le_plus_proche = None
+        label_le_plus_proche = None
         
-        votes = Counter([label for _, label, _ in top_k])
-        label_predit = votes.most_common(1)[0][0]
+        for _, row in df.iterrows():
+            vec_bdd = np.array(ast.literal_eval(row["vecteur"]))
+            
+            sim = self.similarite_cosine(v_query, vec_bdd)
+            
+            if sim > similarite_max:
+                similarite_max = sim
+                texte_le_plus_proche = row["text"]
+                label_le_plus_proche = row["label"] if "label" in df.columns else None
         
-        return label_predit
+        return texte_le_plus_proche, similarite_max
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     vec = Vecteur()
     
-    input_csv = "/Users/aymanearbai/Documents/cours/S7/ProcessusDev/flask-react-app/backend/cleaned_text.csv"
-    output_csv = "/Users/aymanearbai/Documents/cours/S7/ProcessusDev/flask-react-app/backend/output.csv"
-    vec.compute_label_vectors(input_csv, output_csv)
+    input_csv = "./cleaned_text.csv"
+    vectors_csv = "./cleaned_text_with_vectors.csv"
+    label_vectors_csv = "./label_vectors.csv"
     
-    texte_test = "Oh my god, I can't believe this is happening, this is so unexpected and amazing, I'm absolutely shocked"
+    # import os
+    # if not os.path.exists(vectors_csv):
+    #     vec.precomputer_vecteurs(input_csv, vectors_csv)
     
-    prediction_moyenne = vec.predire_label(texte_test, output_csv)
+    # if not os.path.exists(label_vectors_csv):
+    #     vec.compute_label_vectors(input_csv, label_vectors_csv)
     
-    vec.entrainer_knn(input_csv)
-    vec.predire_label_knn_detaille(texte_test, k=5)
+    # vec.entrainer_knn(vectors_csv)
+    
+    texte_test = "im feeling enamoured start warbling daybreak really pleasant birdsongs"
+    
+    # emotion_knn = vec.predire_label_knn(texte_test, k=5)
+    # emotion_moyenne = vec.predire_label_moyenne(texte_test, label_vectors_csv)
+
+    # print(emotion_knn)
+    # print(emotion_moyenne)
+
+    print(vec.trouver_texte_le_plus_proche(texte_test, "/Users/aymanearbai/Documents/cours/S7/ProcessusDev/flask-react-app/backend/cleaned_text_with_vectors.csv"))
