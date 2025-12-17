@@ -8,13 +8,11 @@ import ast
 
 class Vecteur:
     def __init__(self, modele="sentence-transformers/all-MiniLM-L6-v2"):
-        # MODIFICATION ICI : modèle d'embeddings
         self.model = SentenceTransformer(modele)
         self.vecteurs_train = []
         self.labels_train = []
 
     def vectoriser_phrase(self, phrase: str) -> np.ndarray:
-        #  MODIFICATION ICI : encode au lieu de spaCy
         return self.model.encode(str(phrase))
 
     @staticmethod
@@ -29,6 +27,12 @@ class Vecteur:
         return self.similarite_cosine(v1, v2)
 
     def precomputer_vecteurs(self, input_csv: str, output_csv: str):
+        """
+        Permet de pré-computer les vecteurs pour chaque phrase dans un 
+        CSV et de sauvegarder le résultat dans un nouveau CSV.
+        
+        auteur: Lila
+        """
         df = pd.read_csv(input_csv)
         if "text" not in df.columns or "label" not in df.columns:
             raise ValueError("Le CSV doit contenir 'text' et 'label'.")
@@ -47,6 +51,11 @@ class Vecteur:
         df.to_csv(output_csv, index=False)
 
     def compute_label_vectors(self, input_csv: str, output_csv: str):
+        """
+        Permet de calculer le vecteur moyen pour chaque label
+
+        auteur: Lila
+        """
         df = pd.read_csv(input_csv)
         if "text" not in df.columns or "label" not in df.columns:
             raise ValueError("Le CSV doit contenir 'text' et 'label'.")
@@ -70,6 +79,10 @@ class Vecteur:
         output_df.to_csv(output_csv, index=False)
 
     def predire_label_moyenne(self, texte: str, label_vectors_csv: str) -> str:
+        """
+        Prediction de l'émotion avec le vecteur moyen de chaque label
+        auteur: Aymane
+        """
         df = pd.read_csv(label_vectors_csv)
         v = self.vectoriser_phrase(texte)
 
@@ -99,6 +112,11 @@ class Vecteur:
             self.labels_train.append(row["label"])
 
     def predire_label_knn(self, texte: str, k=5):
+        """
+        Prédiction de l'emotion avec la methode KNN
+        
+        auteur: Lila
+        """
         if not self.vecteurs_train:
             raise ValueError("Vous devez d'abord appeler entrainer_knn() !")
 
@@ -116,6 +134,11 @@ class Vecteur:
         return votes.most_common(1)[0][0]
 
     def trouver_texte_le_plus_proche(self, texte: str, vectors_csv: str) -> tuple:
+        """
+        Recherche du texte du corpus ayant le vecteur le plus proche de texte d'entré
+        
+        auteur: Aymane
+        """
         df = pd.read_csv(vectors_csv)
 
         v_query = self.vectoriser_phrase(texte)
@@ -141,8 +164,7 @@ if __name__ == "__main__":
 
     texte_test = "I’m so angry I could cry, everything is just too much right now."
 
-    print(
-        vec.trouver_texte_le_plus_proche(
+    print(vec.trouver_texte_le_plus_proche(
             texte_test,
             "cleaned_text_with_vectors.csv"
         )
